@@ -21,8 +21,8 @@
  * @param M, K actual dimensions of the full A matrix
  */
 void read_A(
-    int *A,
-    int A_buffer[TILE_M][TILE_K],
+    int8_t *A,
+    int8_t A_buffer[TILE_M][TILE_K],
     int row_start,
     int col_start,
     int M,
@@ -48,8 +48,8 @@ void read_A(
  * @param K, N actual dimensions of the full A matrix
  */
 void read_B(
-    int *B,
-    int B_buffer[TILE_K][TILE_N],
+    int8_t *B,
+    int8_t B_buffer[TILE_K][TILE_N],
     int row_start,
     int col_start,
     int K,
@@ -100,8 +100,8 @@ void write_C(
  * or C_buffer = A_buffer * B_buffer if this is the first k-tile (i.e. first_k_tile is true)
  */
 void compute(
-    int A_buffer[TILE_M][TILE_K], 
-    int B_buffer[TILE_K][TILE_N], 
+    int8_t A_buffer[TILE_M][TILE_K], 
+    int8_t B_buffer[TILE_K][TILE_N], 
     int C_buffer[TILE_M][TILE_N],
     bool first_k_tile
 ) {
@@ -129,7 +129,7 @@ void compute(
 /*
  * Top-level accelerator function.
  */
-void multiply(int *A, int *B, int *C, int M, int K, int N) {
+void multiply(int8_t *A, int8_t *B, int *C, int M, int K, int N) {
 // Create AXI4 master ports for A, B, and C for reading/writing into/from DRAM
 // offset=slave: Base address in DRAM is provided by the host via an AXI-Lite register
 // depth: determines the maximum number of elements the port might access
@@ -150,8 +150,8 @@ void multiply(int *A, int *B, int *C, int M, int K, int N) {
 // Maps the accelerator's control signals onto AXI-Lite registers
 #pragma HLS INTERFACE s_axilite port=return bundle=CTL
 
-    int A_buffer[TILE_M][TILE_K];
-    int B_buffer[TILE_K][TILE_N];
+    int8_t A_buffer[TILE_M][TILE_K];
+    int8_t B_buffer[TILE_K][TILE_N];
     int C_buffer[TILE_M][TILE_N];
 
     for (int m = 0; m < M; m += TILE_M) {

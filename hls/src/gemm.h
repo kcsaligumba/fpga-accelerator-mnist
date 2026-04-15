@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #ifndef GEMM_H
 #define GEMM_H
 
@@ -9,6 +11,6 @@
 // Maximum supported matrix dimension
 #define MAX_DIM 512
 
-void multiply(int *A, int *B, int *C, int M, int K, int N);
+void multiply(int8_t *A, int8_t *B, int *C, int M, int K, int N);
 
 #endif

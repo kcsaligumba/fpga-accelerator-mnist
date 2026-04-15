@@ -1,21 +1,22 @@
 #include <iostream>
 #include <cstdlib>
+#include <stdint.h>
 #include "gemm.h"
 
-extern void multiply(int *A, int *B, int *C, int M, int K, int N);
+extern void multiply(int8_t *A, int8_t *B, int *C, int M, int K, int N);
 
 // Static arrays sized to the largest test case
 #define MAX_SIZE 128
 
-static int A[MAX_SIZE * MAX_SIZE];
-static int B[MAX_SIZE * MAX_SIZE];
+static int8_t A[MAX_SIZE * MAX_SIZE];
+static int8_t B[MAX_SIZE * MAX_SIZE];
 static int C[MAX_SIZE * MAX_SIZE];
 static int ref[MAX_SIZE * MAX_SIZE];
 
 static bool run_test(int M, int K, int N, const char *label) {
-    // Fill with small deterministic values
-    for (int i = 0; i < M * K; i++) A[i] = (i % 13) - 6;
-    for (int i = 0; i < K * N; i++) B[i] = (i % 11) - 5;
+    // Fill with small deterministic values clamped to [-4, 4] for INT8
+    for (int i = 0; i < M * K; i++) A[i] = (int8_t)((i % 9) - 4);
+    for (int i = 0; i < K * N; i++) B[i] = (int8_t)((i % 9) - 4);
 
     // Reference
     for (int i = 0; i < M; i++) {
