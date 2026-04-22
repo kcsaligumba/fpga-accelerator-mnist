@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define TILE_K  32
-#define TILE_N  32
+#define TILE_N  64
 
 #define FC1_IN  784
 #define FC1_OUT 128
