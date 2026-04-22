@@ -10,6 +10,7 @@ static void gemm_tile_relu(
     const int32_t *bias,
     int8_t         out[N]
 ) {
+#pragma HLS INLINE
     for (int n0 = 0; n0 < N; n0 += TILE_N) {
 
         int32_t acc[TILE_N];
@@ -20,32 +21,18 @@ static void gemm_tile_relu(
             acc[n] = 0;
         }
 
-        for (int k0 = 0; k0 < K; k0 += TILE_K) {
-
-            int8_t W_buf[TILE_K][TILE_N];
-#pragma HLS ARRAY_PARTITION variable=W_buf dim=2 complete
-
-            for (int k = 0; k < TILE_K; k++) {
-                for (int n = 0; n < TILE_N; n++) {
+        // Fused MAC: read weights directly from the partitioned on-chip ROM
+        // TILE_N parallel reads per cycle land in TILE_N different banks
+        for (int k = 0; k < K; k++) {
 #pragma HLS PIPELINE II=1
-                    int gk = k0 + k;
-                    int gn = n0 + n;
-                    W_buf[k][n] = (gk < K && gn < N)
-                                    ? W_rom[gk * N + gn]
-                                    : (int8_t)0;
-                }
-            }
-
-            for (int k = 0; k < TILE_K; k++) {
-#pragma HLS PIPELINE II=1
-                int gk = k0 + k;
-                int8_t a = (gk < K) ? in[gk] : (int8_t)0;
-                for (int n = 0; n < TILE_N; n++) {
+            int8_t a = in[k];
+            for (int n = 0; n < TILE_N; n++) {
 #pragma HLS UNROLL
-                    acc[n] += (int32_t)a * (int32_t)W_buf[k][n];
-                }
+                int gn = n0 + n;
+                int8_t w = (gn < N) ? W_rom[k * N + gn] : (int8_t)0;
+                acc[n] += (int32_t)a * (int32_t)w;
             }
-        } 
+        }
 
         for (int n = 0; n < TILE_N; n++) {
 #pragma HLS PIPELINE II=1
@@ -68,6 +55,7 @@ static void gemm_tile_logits(
     const int32_t *bias,
     int32_t        out[N]
 ) {
+#pragma HLS INLINE
     for (int n0 = 0; n0 < N; n0 += TILE_N) {
 
         int32_t acc[TILE_N];
@@ -78,30 +66,14 @@ static void gemm_tile_logits(
             acc[n] = 0;
         }
 
-        for (int k0 = 0; k0 < K; k0 += TILE_K) {
-
-            int8_t W_buf[TILE_K][TILE_N];
-#pragma HLS ARRAY_PARTITION variable=W_buf dim=2 complete
-
-            for (int k = 0; k < TILE_K; k++) {
-                for (int n = 0; n < TILE_N; n++) {
+        for (int k = 0; k < K; k++) {
 #pragma HLS PIPELINE II=1
-                    int gk = k0 + k;
-                    int gn = n0 + n;
-                    W_buf[k][n] = (gk < K && gn < N)
-                                    ? W_rom[gk * N + gn]
-                                    : (int8_t)0;
-                }
-            }
-
-            for (int k = 0; k < TILE_K; k++) {
-#pragma HLS PIPELINE II=1
-                int gk = k0 + k;
-                int8_t a = (gk < K) ? in[gk] : (int8_t)0;
-                for (int n = 0; n < TILE_N; n++) {
+            int8_t a = in[k];
+            for (int n = 0; n < TILE_N; n++) {
 #pragma HLS UNROLL
-                    acc[n] += (int32_t)a * (int32_t)W_buf[k][n];
-                }
+                int gn = n0 + n;
+                int8_t w = (gn < N) ? W_rom[k * N + gn] : (int8_t)0;
+                acc[n] += (int32_t)a * (int32_t)w;
             }
         }
 
@@ -123,7 +95,14 @@ void mlp(int8_t *A, int32_t *C) {
 #pragma HLS INTERFACE s_axilite port=C      bundle=CTL
 #pragma HLS INTERFACE s_axilite port=return bundle=CTL
 
-   
+// Cyclic-partition each weight ROM by TILE_N so the inner unrolled N-loop can perform TILE_N parallel reads per cycle at II=1
+#pragma HLS ARRAY_PARTITION variable=W1 cyclic factor=32 dim=1
+#pragma HLS ARRAY_PARTITION variable=W2 cyclic factor=32 dim=1
+#pragma HLS ARRAY_PARTITION variable=W3 cyclic factor=32 dim=1
+#pragma HLS ARRAY_PARTITION variable=b1 complete
+#pragma HLS ARRAY_PARTITION variable=b2 complete
+#pragma HLS ARRAY_PARTITION variable=b3 complete
+
     int8_t act1[FC1_OUT];
     int8_t act2[FC2_OUT];
 #pragma HLS ARRAY_PARTITION variable=act1 complete
