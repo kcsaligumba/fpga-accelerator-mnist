@@ -13,6 +13,10 @@
 #define FC3_IN   64
 #define FC3_OUT  10
 
+#define REQUANT_SHIFT 31
+#define FC1_M0  1006425
+#define FC2_M0  7466824
+
 void mlp(
     int8_t  *A,
     int8_t  *W1, int32_t *b1,

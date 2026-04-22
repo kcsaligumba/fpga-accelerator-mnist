@@ -1,6 +1,6 @@
 #include "hls.h"
 
-template <int K, int N>
+template <int K, int N, int32_t M0, int SHIFT>
 static void gemm_tile_relu(
     int8_t  *in,
     int8_t  *W,
@@ -49,10 +49,13 @@ static void gemm_tile_relu(
             int gn = n0 + n;
             if (gn < N) {
                 int32_t v = acc[n] + bias[gn];
-                out[gn] = (int8_t)(v > 127 ? 127 : (v < 0 ? 0 : v));
+                if (v < 0) v = 0; // ReLU
+                int64_t scaled = ((int64_t)v * (int64_t)M0
+                                  + ((int64_t)1 << (SHIFT - 1))) >> SHIFT; // round half up
+                out[gn] = (int8_t)(scaled > 127 ? 127 : scaled);
             }
         }
-    } 
+    }
 }
 
 
@@ -142,10 +145,10 @@ void mlp(
 #pragma HLS ARRAY_PARTITION variable=act2 complete
 
     // FC1
-    gemm_tile_relu<FC1_IN, FC1_OUT>(A, W1, b1, act1);
+    gemm_tile_relu<FC1_IN, FC1_OUT, FC1_M0, REQUANT_SHIFT>(A, W1, b1, act1);
 
     // FC2
-    gemm_tile_relu<FC2_IN, FC2_OUT>(act1, W2, b2, act2);
+    gemm_tile_relu<FC2_IN, FC2_OUT, FC2_M0, REQUANT_SHIFT>(act1, W2, b2, act2);
 
     // FC3
     gemm_tile_logits<FC3_IN, FC3_OUT>(act2, W3, b3, C);
