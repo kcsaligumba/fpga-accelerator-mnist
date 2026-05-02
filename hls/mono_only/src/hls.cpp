@@ -90,17 +90,18 @@ void mlp(
     int8_t  *W1, int32_t *b1,
     int8_t  *W2, int32_t *b2,
     int8_t  *W3, int32_t *b3,
-    int32_t *C
+    int32_t *C,
+    int M
 ) {
 
-#pragma HLS INTERFACE m_axi port=A  depth=784    offset=slave bundle=in_a
+#pragma HLS INTERFACE m_axi port=A  depth=100352 offset=slave bundle=in_a
 #pragma HLS INTERFACE m_axi port=W1 depth=100352 offset=slave bundle=in_w1
 #pragma HLS INTERFACE m_axi port=b1 depth=128    offset=slave bundle=in_w1
 #pragma HLS INTERFACE m_axi port=W2 depth=8192   offset=slave bundle=in_w2
 #pragma HLS INTERFACE m_axi port=b2 depth=64     offset=slave bundle=in_w2
 #pragma HLS INTERFACE m_axi port=W3 depth=640    offset=slave bundle=in_w3
 #pragma HLS INTERFACE m_axi port=b3 depth=10     offset=slave bundle=in_w3
-#pragma HLS INTERFACE m_axi port=C  depth=10     offset=slave bundle=out_c
+#pragma HLS INTERFACE m_axi port=C  depth=1280   offset=slave bundle=out_c
 
 #pragma HLS INTERFACE s_axilite port=A      bundle=CTL
 #pragma HLS INTERFACE s_axilite port=W1     bundle=CTL
@@ -110,8 +111,8 @@ void mlp(
 #pragma HLS INTERFACE s_axilite port=W3     bundle=CTL
 #pragma HLS INTERFACE s_axilite port=b3     bundle=CTL
 #pragma HLS INTERFACE s_axilite port=C      bundle=CTL
+#pragma HLS INTERFACE s_axilite port=M      bundle=CTL
 #pragma HLS INTERFACE s_axilite port=return bundle=CTL
-
 
     // On-chip mirrors of weights/biases: partitioned so TILE_N=32 reads per cycle can happen inside the fused MAC loop.
     int8_t  W1_bram[FC1_IN * FC1_OUT];
@@ -127,7 +128,7 @@ void mlp(
 #pragma HLS ARRAY_PARTITION variable=b2_bram complete
 #pragma HLS ARRAY_PARTITION variable=b3_bram complete
 
-    // One-time burst load of weights/biases from DRAM into on-chip BRAM.
+    // One-time burst load of weights/biases from DRAM into on-chip BRAM, amortized across M samples.
     memcpy(W1_bram, W1, sizeof(W1_bram));
     memcpy(b1_bram, b1, sizeof(b1_bram));
     memcpy(W2_bram, W2, sizeof(W2_bram));
@@ -140,12 +141,10 @@ void mlp(
 #pragma HLS ARRAY_PARTITION variable=act1 complete
 #pragma HLS ARRAY_PARTITION variable=act2 complete
 
-    // FC1
-    gemm_tile_relu<FC1_IN, FC1_OUT, FC1_M0, REQUANT_SHIFT>(A, W1_bram, b1_bram, act1);
-
-    // FC2
-    gemm_tile_relu<FC2_IN, FC2_OUT, FC2_M0, REQUANT_SHIFT>(act1, W2_bram, b2_bram, act2);
-
-    // FC3
-    gemm_tile_logits<FC3_IN, FC3_OUT>(act2, W3_bram, b3_bram, C);
+    for (int m = 0; m < M; m++) {
+#pragma HLS LOOP_TRIPCOUNT min=1 max=128 avg=32
+        gemm_tile_relu<FC1_IN, FC1_OUT, FC1_M0, REQUANT_SHIFT>(A + m * FC1_IN, W1_bram, b1_bram, act1);
+        gemm_tile_relu<FC2_IN, FC2_OUT, FC2_M0, REQUANT_SHIFT>(act1, W2_bram, b2_bram, act2);
+        gemm_tile_logits<FC3_IN, FC3_OUT>(act2, W3_bram, b3_bram, C + m * FC3_OUT);
+    }
 }

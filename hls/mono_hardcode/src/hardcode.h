@@ -3,8 +3,9 @@
 
 #include <stdint.h>
 
-#define TILE_K  32
-#define TILE_N  32
+#define TILE_K    32
+#define TILE_N    32
+#define MAX_BATCH 128
 
 #define FC1_IN  784
 #define FC1_OUT 128
@@ -18,6 +19,6 @@
 #define FC2_M0  7466824
 
 
-void mlp(int8_t *A, int32_t *C);
+void mlp(int8_t *A, int32_t *C, int M);
 
 #endif

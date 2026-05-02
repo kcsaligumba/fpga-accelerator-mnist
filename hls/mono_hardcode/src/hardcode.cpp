@@ -87,12 +87,13 @@ static void gemm_tile_logits(
 }
 
 
-void mlp(int8_t *A, int32_t *C) {
-#pragma HLS INTERFACE m_axi port=A depth=784 offset=slave bundle=in_a
-#pragma HLS INTERFACE m_axi port=C depth=10  offset=slave bundle=out_c
+void mlp(int8_t *A, int32_t *C, int M) {
+#pragma HLS INTERFACE m_axi port=A depth=100352 offset=slave bundle=in_a
+#pragma HLS INTERFACE m_axi port=C depth=1280   offset=slave bundle=out_c
 
 #pragma HLS INTERFACE s_axilite port=A      bundle=CTL
 #pragma HLS INTERFACE s_axilite port=C      bundle=CTL
+#pragma HLS INTERFACE s_axilite port=M      bundle=CTL
 #pragma HLS INTERFACE s_axilite port=return bundle=CTL
 
 // Cyclic-partition each weight ROM by TILE_N so the inner unrolled N-loop can perform TILE_N parallel reads per cycle at II=1
@@ -108,12 +109,10 @@ void mlp(int8_t *A, int32_t *C) {
 #pragma HLS ARRAY_PARTITION variable=act1 complete
 #pragma HLS ARRAY_PARTITION variable=act2 complete
 
-    // FC1
-    gemm_tile_relu<FC1_IN, FC1_OUT, FC1_M0, REQUANT_SHIFT>(A, W1, b1, act1);
-
-    // FC2
-    gemm_tile_relu<FC2_IN, FC2_OUT, FC2_M0, REQUANT_SHIFT>(act1, W2, b2, act2);
-
-    // FC3
-    gemm_tile_logits<FC3_IN, FC3_OUT>(act2, W3, b3, C);
+    for (int m = 0; m < M; m++) {
+#pragma HLS LOOP_TRIPCOUNT min=1 max=128 avg=32
+        gemm_tile_relu<FC1_IN, FC1_OUT, FC1_M0, REQUANT_SHIFT>(A + m * FC1_IN, W1, b1, act1);
+        gemm_tile_relu<FC2_IN, FC2_OUT, FC2_M0, REQUANT_SHIFT>(act1, W2, b2, act2);
+        gemm_tile_logits<FC3_IN, FC3_OUT>(act2, W3, b3, C + m * FC3_OUT);
+    }
 }
