@@ -14,11 +14,11 @@
 
 /*
  * Burst-read one tile of matrix A from DRAM into on-chip BRAM.
- * @param A pointer to the full A matrix in DRAM
- * @param A_buffer on-chip BRAM buffer to hold one TILE_M x TILE_K sub-matrix
- * @param row_start row index in the full matrix where this tile begins
- * @param col_start column index in the full matrix where this tile begins
- * @param M, K actual dimensions of the full A matrix
+ * @param A         Pointer to the full A matrix in DRAM
+ * @param A_buffer  On-chip BRAM buffer to hold one TILE_M x TILE_K sub-matrix
+ * @param row_start Row index in the full matrix where this tile begins
+ * @param col_start Column index in the full matrix where this tile begins
+ * @param M, K      Actual dimensions of the full A matrix
  */
 void read_A(
     int8_t *A,
@@ -41,11 +41,11 @@ void read_A(
 
 /*
  * Burst-read one tile of matrix B from DRAM into on-chip BRAM.
- * @param B pointer to the full B matrix in DRAM
- * @param B_buffer on-chip BRAM buffer to hold one TILE_K x TILE_N sub-matrix
- * @param row_start row index in the full matrix where this tile begins
- * @param col_start column index in the full matrix where this tile begins
- * @param K, N actual dimensions of the full A matrix
+ * @param B         Pointer to the full B matrix in DRAM
+ * @param B_buffer  On-chip BRAM buffer to hold one TILE_K x TILE_N sub-matrix
+ * @param row_start Row index in the full matrix where this tile begins
+ * @param col_start Column index in the full matrix where this tile begins
+ * @param K, N      Actual dimensions of the full B matrix
  */
 void read_B(
     int8_t *B,
@@ -68,11 +68,11 @@ void read_B(
 
 /*
  * Burst-write one completed tile of C from on-chip BRAM back to DRAM.
- * @param A pointer to the full A matrix in DRAM
- * @param A_buffer on-chip BRAM buffer to hold one TILE_M x TILE_K sub-matrix
- * @param row_start row index in the full matrix where this tile begins
- * @param col_start column index in the full matrix where this tile begins
- * @param M, K actual dimensions of the full A matrix
+ * @param A         Pointer to the full A matrix in DRAM
+ * @param A_buffer  On-chip BRAM buffer to hold one TILE_M x TILE_K sub-matrix
+ * @param row_start Row index in the full matrix where this tile begins
+ * @param col_start Column index in the full matrix where this tile begins
+ * @param M, K      Actual dimensions of the full A matrix
  */
 void write_C(
     int *C,
